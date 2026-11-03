@@ -1,0 +1,12 @@
+{
+  "domain": "ieasy",
+  "name": "Hiconics iEasy+",
+  "codeowners": ["@Yocee84"],
+  "config_flow": true,
+  "documentation": "https://github.com/Yocee84/ha-ieasy",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Yocee84/ha-ieasy/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

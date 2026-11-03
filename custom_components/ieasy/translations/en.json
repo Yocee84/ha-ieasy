@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hiconics iEasy+",
+        "data": {
+          "username": "Account (email)",
+          "password": "Password",
+          "base_url": "Server URL",
+          "site_name": "Site name"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Login failed",
+      "cannot_connect": "Cannot reach the iEasy+ server"
+    },
+    "abort": {
+      "already_configured": "This station is already configured"
+    }
+  }
+}
