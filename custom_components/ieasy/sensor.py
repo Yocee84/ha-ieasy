@@ -6,8 +6,8 @@ from typing import Any, Callable
 
 from homeassistant.components.sensor import (SensorDeviceClass, SensorEntity, SensorEntityDescription,
                                              SensorStateClass)
-from homeassistant.const import (PERCENTAGE, UnitOfElectricCurrent, UnitOfElectricPotential, UnitOfEnergy,
-                                 UnitOfFrequency, UnitOfPower, UnitOfTemperature)
+from homeassistant.const import (PERCENTAGE, EntityCategory, UnitOfElectricCurrent, UnitOfElectricPotential,
+                                 UnitOfEnergy, UnitOfFrequency, UnitOfPower, UnitOfTemperature)
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -78,9 +78,42 @@ SENSORS: tuple[IEasySensorDescription, ...] = (
 )
 
 
+def _setting(code: str, key: str, name: str, unit=None, numeric: bool = True) -> IEasySensorDescription:
+    return IEasySensorDescription(
+        key=f"setting_{key}", name=name, group="settings", field=code, native_unit_of_measurement=unit,
+        state_class=M if numeric and unit else None, entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=None if numeric else (lambda d, c=code: d.get(c)),
+    )
+
+
+# Current inverter settings, read from the app's settings tree (point code -> sensor).
+SETTING_SENSORS: tuple[IEasySensorDescription, ...] = (
+    _setting("22084", "working_mode", "Working mode (0 self use, 1 sell first, 2 backup)"),
+    _setting("13596", "user_scenario", "User scenario (5 feed-in, 7 zero export)"),
+    _setting("22085", "cutoff_soc", "Cut-off SOC", PERCENTAGE),
+    _setting("13617", "feed_enable", "Feed-in enabled"),
+    _setting("13634", "feed_power_limit", "Feed-in power limit", W),
+    _setting("22975", "grid_charging", "Grid charging enabled"),
+    _setting("22992", "grid_charging_power_limit", "Grid charging power limit", W),
+    _setting("23007", "peak_shaving", "Peak shaving enabled"),
+    _setting("23011", "tou_enabled", "TOU enabled"),
+    *(s for i, (fun, start, end, power, soc) in enumerate((
+        ("13779", "13763", "13764", "23024", "23036"), ("13780", "13765", "13766", "23026", "23037"),
+        ("13781", "13767", "13768", "23028", "23038"), ("13782", "13769", "13770", "23030", "23039"),
+        ("13783", "13775", "13776", "23032", "23040"), ("13784", "13777", "13778", "23034", "23041")), start=1)
+      for s in (
+          _setting(fun, f"tou_t{i}_function", f"TOU T{i} function (0 idle, 1 charge, 2 discharge)"),
+          _setting(start, f"tou_t{i}_start", f"TOU T{i} start", numeric=False),
+          _setting(end, f"tou_t{i}_end", f"TOU T{i} end", numeric=False),
+          _setting(power, f"tou_t{i}_power", f"TOU T{i} power limit", W),
+          _setting(soc, f"tou_t{i}_soc", f"TOU T{i} SOC limit", PERCENTAGE),
+      )),
+)
+
+
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(IEasySensor(coordinator, entry, d) for d in SENSORS)
+    async_add_entities(IEasySensor(coordinator, entry, d) for d in SENSORS + SETTING_SENSORS)
 
 
 class IEasySensor(CoordinatorEntity, SensorEntity):

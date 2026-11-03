@@ -1,4 +1,4 @@
-"""Hiconics iEasy+ cloud integration (read-only)."""
+"""Hiconics iEasy+ cloud integration (read, plus the zero-export offset as the only writable value)."""
 from __future__ import annotations
 
 import logging
@@ -13,10 +13,10 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import IEasyApi, IEasyApiError, IEasyAuthError
 from .const import (CONF_BASE_URL, CONF_SITE_NAME, DEFAULT_BASE_URL, DEFAULT_SITE_NAME, DOMAIN,
-                    SCAN_INTERVAL_SECONDS)
+                    SCAN_INTERVAL_SECONDS, SETTINGS_EVERY)
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.NUMBER]
 
 
 class IEasyCoordinator(DataUpdateCoordinator):
@@ -27,13 +27,28 @@ class IEasyCoordinator(DataUpdateCoordinator):
         self.api = api
         self.station: dict = {}
         self.device: dict = {}
+        self.settings: dict = {}
+        self._polls = 0
+
+    def refresh_settings_next(self) -> None:
+        """Make the next poll re-read the settings tree (used after a write)."""
+        self._polls = 0
 
     async def _async_update_data(self) -> dict:
         try:
             if not self.station:
                 self.station = await self.api.first_station()
                 self.device = await self.api.first_inverter(self.station["stationNo"])
-            return await self.api.snapshot(self.station["stationNo"], self.device["deviceSn"])
+            data = await self.api.snapshot(self.station["stationNo"], self.device["deviceSn"])
+            # The settings tree is large (~400 kB), so read it every SETTINGS_EVERY polls only.
+            if self._polls % SETTINGS_EVERY == 0 or not self.settings:
+                try:
+                    self.settings = await self.api.settings(self.device["deviceSn"])
+                except IEasyApiError as err:
+                    _LOGGER.warning("Could not read inverter settings: %s", err)
+            self._polls += 1
+            data["settings"] = {code: node.get("value") for code, node in self.settings.items()}
+            return data
         except IEasyAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except (IEasyApiError, Exception) as err:  # network errors included

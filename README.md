@@ -1,8 +1,10 @@
 # Hiconics iEasy+ for Home Assistant
 
-Read-only Home Assistant integration for Midea / Hiconics PowerInfi hybrid inverters and batteries that are monitored through the **iEasy+** mobile app.
+Home Assistant integration for Midea / Hiconics PowerInfi hybrid inverters and batteries that are monitored through the **iEasy+** mobile app.
 
-It logs in to the same cloud the app uses, polls once a minute and creates sensors for the battery, the grid (per phase), the load and the PV input. It never writes settings to the inverter.
+It logs in to the same cloud the app uses, polls once a minute and creates sensors for the battery, the grid (per phase), the load and the PV input, plus diagnostic sensors with the current inverter settings (working mode, TOU slots, limits).
+
+The only writable value is the **zero-export offset** (number entity, limits taken from the app, 0-600 W on the tested model). A write is sent the same way the app does it and only counts as done when the inverter confirms the new value; otherwise Home Assistant shows an error.
 
 > Unofficial. Not affiliated with Midea or Hiconics. The cloud API is undocumented and was worked out from the app, so it can change without notice.
 
@@ -56,7 +58,7 @@ Every production region in iEasy+ 1.1.5 uses the same server, `https://ieasy.mid
 
 The list comes from the app and from the public endpoint `https://ess-eu.hiconics.com/v1/sys/index/server/sites` (header `ems_app_id: 1017`). Only Europe has been tested so far.
 
-## Sensors
+## Entities
 
 | Group | Sensors |
 |---|---|
@@ -64,6 +66,10 @@ The list comes from the app and from the public endpoint `https://ess-eu.hiconic
 | Grid | active power (raw, import is negative), import power, export power, power and voltage per phase (A/B/C), frequency, import/export today and total |
 | Load | load power, backup load power, load today/total, backup load total |
 | PV | PV power, PV1/PV2 power, PV today/total |
+| Settings (diagnostic) | working mode, user scenario, cut-off SOC, feed-in enabled/limit, grid charging enabled/limit, peak shaving, TOU enabled, TOU T1-T6 function/start/end/power/SOC |
+| Number | zero-export offset (writable) |
+
+Settings are re-read every 10 minutes and right after a write.
 
 The `*_total` energy sensors are `total_increasing` and can be used directly in the Energy dashboard (solar: *PV total*, battery: *Battery charge total* / *Battery discharge total*).
 
@@ -72,6 +78,7 @@ Phase letters are the inverter's own labels. On the tested installation the app'
 ## Notes
 
 - Update interval: 60 s. The cloud itself updates about once a minute.
+- Writing the offset needs an account that can change settings in the app.
 - The login token lasts about 24 hours; the integration logs in again automatically.
 - Brand icon: Home Assistant 2026.3+ shows it from `custom_components/ieasy/brand/`.
 

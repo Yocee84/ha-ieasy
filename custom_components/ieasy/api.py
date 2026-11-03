@@ -1,6 +1,11 @@
-"""Minimal read-only client for the iEasy+ cloud API (reverse engineered from the app)."""
+"""Minimal client for the iEasy+ cloud API (reverse engineered from the app).
+
+Everything is read-only except write_point(), which the number platform uses for the
+zero-export offset only.
+"""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any
@@ -88,6 +93,55 @@ class IEasyApi:
             if dev.get("deviceType") == "Plant_Inverter":
                 return dev
         raise IEasyApiError("no inverter in the station")
+
+    async def settings(self, device_sn: str) -> dict[str, dict[str, Any]]:
+        """All setting points of the inverter (the app's remote-settings tree), keyed by point code."""
+        data = await self.call("deve/v1/setting/task/tree/v1", {"sn": device_sn, "type": "APP_CFG"})
+        points: dict[str, dict[str, Any]] = {}
+        stack = list((data or {}).get("nodeList") or [])
+        while stack:
+            node = stack.pop()
+            if node.get("nodeType") == "POINT" and node.get("code"):
+                points.setdefault(str(node["code"]), node)
+            stack.extend(node.get("children") or [])
+        return points
+
+    async def write_point(self, device_id: str, device_sn: str, node: dict[str, Any], value: str) -> str:
+        """Write one setting point the way the app does and return the value the inverter confirmed.
+
+        Raises IEasyApiError if the task fails or the confirmed value differs from the requested one.
+        """
+        now = datetime.now().astimezone()
+        offset = now.strftime("%z")
+        tz = f"UTC{offset[:3]}:{offset[3:]}"
+        task_name = f"{now.strftime('%Y/%m/%d %H:%M:%S')} {tz} _ [{device_sn}]"
+        item = {
+            "code": str(node["code"]), "attrField": node.get("attrField"), "langKey": node.get("langKey"),
+            "value": node.get("value"), "settingValue": str(value), "needReply": 1,
+            "pointName": node.get("attrField"), "type": node.get("type"), "typeCfg": node.get("typeCfg"),
+            "customFlag": node.get("customFlag", 0),
+        }
+        body = {
+            "deviceList": [{"deviceId": device_id, "taskName": task_name, "timeZone": tz}],
+            "taskName": task_name, "retryType": 1, "retryValue": 1, "timeZone": tz, "settingInfoList": [item],
+        }
+        await self.call("deve/v1/setting/task/new/apply/v1", body)
+        for _ in range(15):
+            await asyncio.sleep(2)
+            tasks = await self.call("deve/v1/setting/task/query", {"deviceId": device_id, "pageIndex": 1, "pageSize": 1})
+            records = (tasks or {}).get("records") or []
+            if not records or records[0].get("taskName") != task_name:
+                continue
+            detail = await self.call("deve/v1/setting/task/app/detail", {"id": records[0]["id"]})
+            for entry in (detail or {}).get("executeList") or []:
+                if str(entry.get("point")) != str(node["code"]) or entry.get("executeStatus") in (None, 0):
+                    continue
+                result = str(entry.get("resultValue"))
+                if entry.get("executeStatus") != 1 or result != str(value):
+                    raise IEasyApiError(f"write {node['code']}={value} not confirmed (status "
+                                        f"{entry.get('executeStatus')}, inverter reports {result})")
+                return result
+        raise IEasyApiError(f"write {node['code']}={value}: no confirmation from the inverter in 30 s")
 
     async def snapshot(self, station_no: str, device_sn: str) -> dict[str, dict[str, Any]]:
         """All read endpoints in one dict: flow, battery, grid, load, pv."""
