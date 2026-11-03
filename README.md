@@ -34,13 +34,27 @@ Settings → Devices & services → **Add integration** → *Hiconics iEasy+*
 |---|---|
 | Account | the email address you use in the iEasy+ app |
 | Password | your iEasy+ password |
-| Server URL | `https://ieasy.midea.com/` (default, EU site) |
-| Site name | `INFO_REGION_COUNTRY_R_Europe` (default) |
+| Server URL | `https://ieasy.midea.com/` (default, same for every region) |
+| Site name | pick the region you chose in the app (default: Europe) |
 
 The first station on the account and its first inverter are used.
 
-Other regions: the list of sites (with their server URL) is public at
-`https://ess-eu.hiconics.com/v1/sys/index/server/sites` (send the header `ems_app_id: 1017`). Use the `url` and `name` of your region.
+### Regions
+
+Every production region in iEasy+ 1.1.5 uses the same server, `https://ieasy.midea.com`; only the site name differs. Choose the one matching the region you selected at login in the app:
+
+| Region in the app | Site name |
+|---|---|
+| Europe | `INFO_REGION_COUNTRY_R_Europe` |
+| Australia | `INFO_REGION_COUNTRY_C_Australia` |
+| New Zealand | `Modbus_New_Zealand` |
+| North America | `Modbus_North_America` |
+| Latin America | `Register_Latin_America` |
+| Asia Pacific & Central Asia | `Register_Asia_Pacific_Central_Asia` |
+| India | `INFO_REGION_COUNTRY_C_India` |
+| Africa | `INFO_REGION_COUNTRY_R_Africa` |
+
+The list comes from the app and from the public endpoint `https://ess-eu.hiconics.com/v1/sys/index/server/sites` (header `ems_app_id: 1017`). Only Europe has been tested so far.
 
 ## Sensors
 

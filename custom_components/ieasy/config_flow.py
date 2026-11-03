@@ -8,13 +8,13 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import IEasyApi, IEasyAuthError
-from .const import CONF_BASE_URL, CONF_SITE_NAME, DEFAULT_BASE_URL, DEFAULT_SITE_NAME, DOMAIN
+from .const import CONF_BASE_URL, CONF_SITE_NAME, DEFAULT_BASE_URL, DEFAULT_SITE_NAME, DOMAIN, SITES
 
 SCHEMA = vol.Schema({
     vol.Required(CONF_USERNAME): str,
     vol.Required(CONF_PASSWORD): str,
     vol.Optional(CONF_BASE_URL, default=DEFAULT_BASE_URL): str,
-    vol.Optional(CONF_SITE_NAME, default=DEFAULT_SITE_NAME): str,
+    vol.Optional(CONF_SITE_NAME, default=DEFAULT_SITE_NAME): vol.In(SITES),
 })
 
 
