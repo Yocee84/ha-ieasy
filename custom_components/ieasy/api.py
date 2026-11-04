@@ -36,6 +36,9 @@ class IEasyApi:
         self._account = account
         self._password = password
         self._token = ""
+        # Writes are serialised: the task is found again by its name, which only has 1 s resolution.
+        self._write_lock = asyncio.Lock()
+        self._last_task_name = ""
 
     def _headers(self) -> dict[str, str]:
         offset = datetime.now().astimezone().strftime("%z")
@@ -111,10 +114,21 @@ class IEasyApi:
 
         Raises IEasyApiError if the task fails or the confirmed value differs from the requested one.
         """
+        async with self._write_lock:
+            return await self._write_point_locked(device_id, device_sn, node, value)
+
+    def _task_name(self, device_sn: str) -> tuple[str, str]:
         now = datetime.now().astimezone()
         offset = now.strftime("%z")
         tz = f"UTC{offset[:3]}:{offset[3:]}"
-        task_name = f"{now.strftime('%Y/%m/%d %H:%M:%S')} {tz} _ [{device_sn}]"
+        return f"{now.strftime('%Y/%m/%d %H:%M:%S')} {tz} _ [{device_sn}]", tz
+
+    async def _write_point_locked(self, device_id: str, device_sn: str, node: dict[str, Any], value: str) -> str:
+        task_name, tz = self._task_name(device_sn)
+        while task_name == self._last_task_name:
+            await asyncio.sleep(0.2)
+            task_name, tz = self._task_name(device_sn)
+        self._last_task_name = task_name
         item = {
             "code": str(node["code"]), "attrField": node.get("attrField"), "langKey": node.get("langKey"),
             "value": node.get("value"), "settingValue": str(value), "needReply": 1,
@@ -128,13 +142,15 @@ class IEasyApi:
         await self.call("deve/v1/setting/task/new/apply/v1", body)
         for _ in range(15):
             await asyncio.sleep(2)
-            tasks = await self.call("deve/v1/setting/task/query", {"deviceId": device_id, "pageIndex": 1, "pageSize": 1})
-            records = (tasks or {}).get("records") or []
-            if not records or records[0].get("taskName") != task_name:
+            # Newer tasks (another write from the app) push ours down the list, so look further than the top one.
+            tasks = await self.call("deve/v1/setting/task/query", {"deviceId": device_id, "pageIndex": 1, "pageSize": 10})
+            record = next((r for r in (tasks or {}).get("records") or [] if r.get("taskName") == task_name), None)
+            if not record:
                 continue
-            detail = await self.call("deve/v1/setting/task/app/detail", {"id": records[0]["id"]})
+            detail = await self.call("deve/v1/setting/task/app/detail", {"id": record["id"]})
             for entry in (detail or {}).get("executeList") or []:
-                if str(entry.get("point")) != str(node["code"]) or entry.get("executeStatus") in (None, 0):
+                if (str(entry.get("point")) != str(node["code"]) or str(entry.get("settingValue")) != str(value)
+                        or entry.get("executeStatus") in (None, 0)):
                     continue
                 result = str(entry.get("resultValue"))
                 if entry.get("executeStatus") != 1 or result != str(value):
