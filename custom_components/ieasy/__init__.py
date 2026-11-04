@@ -1,22 +1,24 @@
-"""Hiconics iEasy+ cloud integration (read, plus the zero-export offset as the only writable value)."""
+"""Hiconics iEasy+ cloud integration (read, plus a few settings writable behind an unlock switch)."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import IEasyApi, IEasyApiError, IEasyAuthError
-from .const import (CONF_BASE_URL, CONF_SITE_NAME, DEFAULT_BASE_URL, DEFAULT_SITE_NAME, DOMAIN,
-                    SCAN_INTERVAL_SECONDS, SETTINGS_EVERY)
+from .const import (CONF_BASE_URL, CONF_SITE_NAME, DEBOUNCE_SECONDS, DEFAULT_BASE_URL, DEFAULT_SITE_NAME, DOMAIN,
+                    SCAN_INTERVAL_SECONDS, SETTINGS_EVERY, UNLOCK_SECONDS)
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS = [Platform.SENSOR, Platform.NUMBER]
+PLATFORMS = [Platform.SENSOR, Platform.NUMBER, Platform.SWITCH, Platform.SELECT, Platform.TIME]
 
 
 class IEasyCoordinator(DataUpdateCoordinator):
@@ -29,6 +31,45 @@ class IEasyCoordinator(DataUpdateCoordinator):
         self.device: dict = {}
         self.settings: dict = {}
         self._polls = 0
+        # Writes are refused while locked; unlocking lasts UNLOCK_SECONDS and always starts locked.
+        self.unlocked = False
+        self._relock = None
+        self._write_gen: dict[str, int] = {}
+
+    @callback
+    def set_unlocked(self, unlocked: bool) -> None:
+        if self._relock:
+            self._relock()
+            self._relock = None
+        self.unlocked = unlocked
+        if unlocked:
+            self._relock = async_call_later(self.hass, UNLOCK_SECONDS, self._auto_lock)
+        self.async_update_listeners()
+
+    @callback
+    def _auto_lock(self, _now) -> None:
+        self._relock = None
+        self.set_unlocked(False)
+
+    async def write_setting(self, code: str, value: str) -> None:
+        """Write one setting point after a short debounce; only the last of quick repeated changes is sent."""
+        if not self.unlocked:
+            raise HomeAssistantError("Settings are locked: turn on 'Settings unlocked' first")
+        node = self.settings.get(code)
+        if not node:
+            raise HomeAssistantError(f"Setting {code} not found on this inverter")
+        gen = self._write_gen[code] = self._write_gen.get(code, 0) + 1
+        await asyncio.sleep(DEBOUNCE_SECONDS)
+        if self._write_gen.get(code) != gen:
+            return  # superseded by a newer value for the same setting
+        if not self.unlocked:
+            raise HomeAssistantError("Settings were locked again before the write was sent")
+        result = await self.api.write_point(self.device["deviceId"], self.device["deviceSn"], node, value)
+        node["value"] = result
+        if self.data is not None:
+            self.data.setdefault("settings", {})[code] = result
+        self.async_update_listeners()
+        self.refresh_settings_next()
 
     def refresh_settings_next(self) -> None:
         """Make the next poll re-read the settings tree (used after a write)."""

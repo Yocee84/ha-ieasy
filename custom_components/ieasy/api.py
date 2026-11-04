@@ -1,7 +1,7 @@
 """Minimal client for the iEasy+ cloud API (reverse engineered from the app).
 
-Everything is read-only except write_point(), which the number platform uses for the
-zero-export offset only.
+Everything is read-only except write_point(), which the setting entities use through the
+coordinator (behind the "Settings unlocked" switch).
 """
 from __future__ import annotations
 

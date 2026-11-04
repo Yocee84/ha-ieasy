@@ -25,3 +25,13 @@ SITES = [
     "INFO_REGION_COUNTRY_C_India",
     "INFO_REGION_COUNTRY_R_Africa",
 ]
+
+UNLOCK_SECONDS = 300  # writes are refused unless "Settings unlocked" was switched on in the last 5 minutes
+DEBOUNCE_SECONDS = 2  # quick repeated changes of one setting: only the last value is sent
+
+# Point codes of the six TOU slots: (function, start, end, power limit, SOC limit).
+TOU_SLOTS = (
+    ("13779", "13763", "13764", "23024", "23036"), ("13780", "13765", "13766", "23026", "23037"),
+    ("13781", "13767", "13768", "23028", "23038"), ("13782", "13769", "13770", "23030", "23039"),
+    ("13783", "13775", "13776", "23032", "23040"), ("13784", "13777", "13778", "23034", "23041"),
+)

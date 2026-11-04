@@ -2,9 +2,11 @@
 
 Home Assistant integration for Midea / Hiconics PowerInfi hybrid inverters and batteries that are monitored through the **iEasy+** mobile app.
 
-It logs in to the same cloud the app uses, polls once a minute and creates sensors for the battery, the grid (per phase), the load and the PV input, plus diagnostic sensors with the current inverter settings (working mode, TOU slots, limits).
+It logs in to the same cloud the app uses, polls once a minute and creates sensors for the battery, the grid (per phase), the load, the backup output and the PV strings, plus diagnostic sensors with the current inverter settings (working mode, TOU slots, battery limits, SG Ready).
 
-The only writable value is the **zero-export offset** (number entity, limits taken from the app, 0-600 W on the tested model). A write is sent the same way the app does it and only counts as done when the inverter confirms the new value; otherwise Home Assistant shows an error.
+A few settings are **writable**: zero-export offset, peak shaving on/off and limit, grid charging on/off, TOU on/off, and the six TOU slots (function, start, end, power, SOC). A write is sent the same way the app does it and only counts as done when the inverter confirms the new value; otherwise Home Assistant shows an error.
+
+Writes are protected by a **Settings unlocked** switch. It is off after every start, and turns itself off again 5 minutes after being switched on; while it is off every write is refused, including writes from automations (an automation that changes a setting turns the switch on first). Quick repeated changes of one value (stepping a number box) are debounced: only the last value is sent, 2 s after the last change.
 
 > Unofficial. Not affiliated with Midea or Hiconics. The cloud API is undocumented and was worked out from the app, so it can change without notice.
 
@@ -60,14 +62,18 @@ The list comes from the app and from the public endpoint `https://ess-eu.hiconic
 
 ## Entities
 
-| Group | Sensors |
+| Group | Entities |
 |---|---|
-| Battery | SOC, SOH, temperature, voltage, current, power, charge/discharge today and total |
-| Grid | active power (raw, import is negative), import power, export power, power and voltage per phase (A/B/C), frequency, import/export today and total |
-| Load | load power, backup load power, load today/total, backup load total |
-| PV | PV power, PV1/PV2 power, PV today/total |
-| Settings (diagnostic) | working mode, user scenario, cut-off SOC, feed-in enabled/limit, grid charging enabled/limit, peak shaving, TOU enabled, TOU T1-T6 function/start/end/power/SOC |
-| Number | zero-export offset (writable) |
+| Battery | SOC, SOH, temperature, voltage, current, power, remaining and nominal energy, charge/discharge today and total, modules, type, status code |
+| Grid | active power (raw, import is negative), import power, export power, power, voltage and current per phase (A/B/C), frequency, reactive power, power factor, import/export today, month, year and total, status code |
+| Load | load power, backup load power, load today/month/year/total, backup load today/total |
+| Backup (EPS) output | voltage, current and power per phase |
+| PV | PV power, PV1-PV3 power, voltage and current, PV today/month/year/total |
+| States (diagnostic) | inverter, PV and EPS state codes |
+| Settings (diagnostic) | working mode, user scenario, cut-off SOC, feed-in enabled/limit, grid charging enabled/limit, peak shaving enabled/limit, TOU enabled, TOU active days, TOU T1-T6 function/start/end/power/SOC, PV priority, max power, PV input limit, battery type/activation/packs, charge and discharge current limits, PCS stop/recovery SOC, low battery alarm SOC, economy mode, winter mode, battery heating, SG Ready mode and SOC limits, overload, insulation monitoring, buzzer |
+| Writable (configuration) | Settings unlocked (switch), zero-export offset, peak shaving limit, TOU T1-T6 power and SOC (number); TOU enabled, peak shaving, grid charging (switch); TOU T1-T6 function (select); TOU T1-T6 start and end (time) |
+
+The grid charging power limit stays read-only: the app sends it without asking the inverter for a confirmation, so a write could not be verified.
 
 Settings are re-read every 10 minutes and right after a write.
 
@@ -78,7 +84,7 @@ Phase letters are the inverter's own labels. On the tested installation the app'
 ## Notes
 
 - Update interval: 60 s. The cloud itself updates about once a minute.
-- Writing the offset needs an account that can change settings in the app.
+- Writing settings needs an account that can change settings in the app.
 - The login token lasts about 24 hours; the integration logs in again automatically.
 - Brand icon: Home Assistant 2026.3+ shows it from `custom_components/ieasy/brand/`.
 
