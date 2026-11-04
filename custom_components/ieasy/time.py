@@ -19,6 +19,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 
 
 class IEasyTouTime(IEasySettingEntity, TimeEntity):
+    _entity_domain = "time"
     @property
     def native_value(self):
         try:

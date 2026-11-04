@@ -9,6 +9,10 @@ SETTINGS_EVERY = 10  # polls between two reads of the settings tree
 
 CONF_BASE_URL = "base_url"
 CONF_SITE_NAME = "site_name"
+CONF_LANGUAGE = "language"
+
+# Language of entity names and help texts, chosen per config entry.
+LANGUAGES = {"en": "English", "hu": "Magyar"}
 
 CODE_OK = "COMMON_SUCCESS_200"
 

@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hiconics iEasy+",
+        "data": {
+          "username": "Fiók (email)",
+          "password": "Jelszó",
+          "base_url": "Szerver URL",
+          "site_name": "Régió",
+          "language": "Entitásnevek és súgó nyelve"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Sikertelen bejelentkezés",
+      "cannot_connect": "Az iEasy+ szerver nem érhető el"
+    },
+    "abort": {
+      "already_configured": "Ez az állomás már be van állítva"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hiconics iEasy+",
+        "data": {
+          "language": "Entitásnevek és súgó nyelve"
+        }
+      }
+    }
+  }
+}

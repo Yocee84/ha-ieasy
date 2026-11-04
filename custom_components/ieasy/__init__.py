@@ -14,8 +14,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import IEasyApi, IEasyApiError, IEasyAuthError
-from .const import (CONF_BASE_URL, CONF_SITE_NAME, DEBOUNCE_SECONDS, DEFAULT_BASE_URL, DEFAULT_SITE_NAME, DOMAIN,
-                    SCAN_INTERVAL_SECONDS, SETTINGS_EVERY, UNLOCK_SECONDS)
+from .const import (CONF_BASE_URL, CONF_LANGUAGE, CONF_SITE_NAME, DEBOUNCE_SECONDS, DEFAULT_BASE_URL, DEFAULT_SITE_NAME, DOMAIN,
+                    SCAN_INTERVAL_SECONDS, SETTINGS_EVERY, UNLOCK_SECONDS, LANGUAGES)
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.SENSOR, Platform.NUMBER, Platform.SWITCH, Platform.SELECT, Platform.TIME]
@@ -24,9 +24,10 @@ PLATFORMS = [Platform.SENSOR, Platform.NUMBER, Platform.SWITCH, Platform.SELECT,
 class IEasyCoordinator(DataUpdateCoordinator):
     """Polls the cloud once a minute."""
 
-    def __init__(self, hass: HomeAssistant, api: IEasyApi) -> None:
+    def __init__(self, hass: HomeAssistant, api: IEasyApi, language: str) -> None:
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=SCAN_INTERVAL_SECONDS))
         self.api = api
+        self.language = language
         self.station: dict = {}
         self.device: dict = {}
         self.settings: dict = {}
@@ -38,13 +39,17 @@ class IEasyCoordinator(DataUpdateCoordinator):
 
     @callback
     def set_unlocked(self, unlocked: bool) -> None:
-        if self._relock:
-            self._relock()
-            self._relock = None
+        self.cancel_relock()
         self.unlocked = unlocked
         if unlocked:
             self._relock = async_call_later(self.hass, UNLOCK_SECONDS, self._auto_lock)
         self.async_update_listeners()
+
+    @callback
+    def cancel_relock(self) -> None:
+        if self._relock:
+            self._relock()
+            self._relock = None
 
     @callback
     def _auto_lock(self, _now) -> None:
@@ -100,15 +105,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api = IEasyApi(async_get_clientsession(hass), entry.data.get(CONF_BASE_URL, DEFAULT_BASE_URL),
                    entry.data.get(CONF_SITE_NAME, DEFAULT_SITE_NAME),
                    entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD])
-    coordinator = IEasyCoordinator(hass, api)
+    coordinator = IEasyCoordinator(hass, api, entry_language(hass, entry))
     await coordinator.async_config_entry_first_refresh()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(_options_updated))
     return True
+
+
+def entry_language(hass: HomeAssistant, entry: ConfigEntry) -> str:
+    """Options win over the setup choice; entries made before 0.3.0 follow the HA language if it is supported."""
+    language = entry.options.get(CONF_LANGUAGE) or entry.data.get(CONF_LANGUAGE)
+    if language in LANGUAGES:
+        return language
+    ha_language = (hass.config.language or "en").split("-")[0]
+    return ha_language if ha_language in LANGUAGES else "en"
+
+
+async def _options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if ok:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
+        hass.data[DOMAIN].pop(entry.entry_id).cancel_relock()
     return ok

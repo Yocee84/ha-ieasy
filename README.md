@@ -40,8 +40,15 @@ Settings → Devices & services → **Add integration** → *Hiconics iEasy+*
 | Password | your iEasy+ password |
 | Server URL | `https://ieasy.midea.com/` (default, same for every region) |
 | Site name | pick the region you chose in the app (default: Europe) |
+| Language | language of the entity names and help texts: English or Magyar (Hungarian) |
 
 The first station on the account and its first inverter are used.
+
+### Language and help texts
+
+Entity names and help texts follow the language chosen for the integration, not the Home Assistant UI language. It can be changed later under the integration's **Configure** button; the integration reloads. Entries created before 0.3.0 follow the Home Assistant language if it is English or Hungarian.
+
+Every setting entity carries a short help text in the `description` attribute (`leírás` in Hungarian); open the entity to read it. Entity IDs stay English in both languages, so automations do not depend on the language.
 
 ### Regions
 

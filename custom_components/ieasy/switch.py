@@ -8,6 +8,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, UNLOCK_SECONDS
 from .entity import IEasySettingEntity
+from .texts import UNLOCK_HELP, english_entity_id, help_attrs, name as localized
 
 SWITCHES = (
     ("23011", "tou_enabled_set", "TOU enabled"),
@@ -26,7 +27,6 @@ class IEasyUnlockSwitch(CoordinatorEntity, SwitchEntity):
     """Local only: while off, every write is refused. Turns itself off after UNLOCK_SECONDS."""
 
     _attr_has_entity_name = True
-    _attr_name = "Settings unlocked"
     _attr_icon = "mdi:lock-open-variant"
     _attr_entity_category = EntityCategory.CONFIG
 
@@ -35,7 +35,10 @@ class IEasyUnlockSwitch(CoordinatorEntity, SwitchEntity):
         sn = coordinator.device.get("deviceSn", entry.entry_id)
         self._attr_unique_id = f"{sn}_settings_unlocked"
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, sn)})
-        self._attr_extra_state_attributes = {"relocks_after_seconds": UNLOCK_SECONDS}
+        self._attr_name = localized("settings_unlocked", "Settings unlocked", coordinator.language)
+        self.entity_id = english_entity_id("switch", coordinator, "Settings unlocked")
+        self._attr_extra_state_attributes = {**help_attrs(None, coordinator.language, UNLOCK_HELP),
+                                             "relocks_after_seconds": UNLOCK_SECONDS}
 
     @property
     def available(self) -> bool:
@@ -53,6 +56,8 @@ class IEasyUnlockSwitch(CoordinatorEntity, SwitchEntity):
 
 
 class IEasySettingSwitch(IEasySettingEntity, SwitchEntity):
+    _entity_domain = "switch"
+
     @property
     def is_on(self):
         return None if self.raw_value is None else str(self.raw_value) == "1"

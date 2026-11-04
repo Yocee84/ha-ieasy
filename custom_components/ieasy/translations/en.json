@@ -7,7 +7,8 @@
           "username": "Account (email)",
           "password": "Password",
           "base_url": "Server URL",
-          "site_name": "Site name"
+          "site_name": "Site name",
+          "language": "Language of entity names and help texts"
         }
       }
     },
@@ -17,6 +18,16 @@
     },
     "abort": {
       "already_configured": "This station is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hiconics iEasy+",
+        "data": {
+          "language": "Language of entity names and help texts"
+        }
+      }
     }
   }
 }

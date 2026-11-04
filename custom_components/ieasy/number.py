@@ -31,6 +31,7 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
 
 
 class IEasySettingNumber(IEasySettingEntity, NumberEntity):
+    _entity_domain = "number"
     _attr_mode = NumberMode.BOX
 
     def __init__(self, coordinator, entry, code, key, name, unit, step, cap) -> None:

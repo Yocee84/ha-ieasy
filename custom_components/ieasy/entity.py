@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import IEasyApiError
 from .const import DOMAIN
+from .texts import english_entity_id, help_attrs, name as localized
 
 
 class IEasySettingEntity(CoordinatorEntity):
@@ -17,13 +18,16 @@ class IEasySettingEntity(CoordinatorEntity):
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.CONFIG
+    _entity_domain = ""  # set by each platform
 
     def __init__(self, coordinator, entry, code: str, key: str, name: str) -> None:
         super().__init__(coordinator)
         self._code = code
         sn = coordinator.device.get("deviceSn", entry.entry_id)
         self._attr_unique_id = f"{sn}_{key}"
-        self._attr_name = name
+        self._attr_name = localized(key, name, coordinator.language)
+        self.entity_id = english_entity_id(self._entity_domain, coordinator, name)
+        self._attr_extra_state_attributes = help_attrs(code, coordinator.language)
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, sn)})
 
     @property

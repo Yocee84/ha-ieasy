@@ -13,6 +13,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .texts import english_entity_id, help_attrs, name as localized
 
 W, KWH, V, A = UnitOfPower.WATT, UnitOfEnergy.KILO_WATT_HOUR, UnitOfElectricPotential.VOLT, UnitOfElectricCurrent.AMPERE
 P, E, U, I = SensorDeviceClass.POWER, SensorDeviceClass.ENERGY, SensorDeviceClass.VOLTAGE, SensorDeviceClass.CURRENT
@@ -211,6 +212,11 @@ class IEasySensor(CoordinatorEntity, SensorEntity):
         self.entity_description = description
         sn = coordinator.device.get("deviceSn", entry.entry_id)
         self._attr_unique_id = f"{sn}_{description.key}"
+        self._attr_name = localized(description.key, description.name, coordinator.language)
+        self.entity_id = english_entity_id("sensor", coordinator, description.name)
+        if description.group == "settings":
+            self._attr_extra_state_attributes = help_attrs(
+                "23048" if description.key == "setting_tou_days" else description.field, coordinator.language)
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, sn)},
             name=coordinator.station.get("stationName") or "iEasy",
