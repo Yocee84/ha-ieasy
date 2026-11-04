@@ -1,5 +1,7 @@
 # Hiconics iEasy+ for Home Assistant
 
+![Midea ESS hybrid inverter and battery](docs/midea-ess.jpg)
+
 Home Assistant integration for Midea / Hiconics PowerInfi hybrid inverters and batteries that are monitored through the **iEasy+** mobile app.
 
 It logs in to the same cloud the app uses, polls once a minute and creates sensors for the battery, the grid (per phase), the load, the backup output and the PV strings, plus diagnostic sensors with the current inverter settings (working mode, TOU slots, battery limits, SG Ready).

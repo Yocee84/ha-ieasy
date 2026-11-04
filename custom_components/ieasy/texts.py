@@ -132,16 +132,17 @@ HELP: dict[str, tuple[str, str]] = {
     "22011": ("Buzzer of the inverter.", "A gép hangjelzése."),
 }
 for _i, (_fun, _start, _end, _power, _soc) in enumerate(TOU_SLOTS, start=1):
+    _a = "az" if _i in (1, 5) else "a"  # Hungarian article: "az 1.", "az 5.", "a 2."
     HELP[_fun] = (f"What the battery does in slot T{_i}: idle, charge or discharge.",
-                  f"Mit csinál az akku a {_i}. sávban: üresjárat, töltés vagy kisütés.")
+                  f"Mit csinál az akku {_a} {_i}. sávban: üresjárat, töltés vagy kisütés.")
     HELP[_start] = (f"Start of slot T{_i} (HH:MM). Keep the slots from overlapping.",
-                    f"A {_i}. sáv kezdete (ÓÓ:PP). A sávok ne fedjék egymást.")
+                    f"{_a.capitalize()} {_i}. sáv kezdete (ÓÓ:PP). A sávok ne fedjék egymást.")
     HELP[_end] = (f"End of slot T{_i} (HH:MM). Keep the slots from overlapping.",
-                  f"A {_i}. sáv vége (ÓÓ:PP). A sávok ne fedjék egymást.")
+                  f"{_a.capitalize()} {_i}. sáv vége (ÓÓ:PP). A sávok ne fedjék egymást.")
     HELP[_power] = (f"Maximum charge or discharge power of the battery in slot T{_i}.",
-                    f"Az akku legnagyobb töltő- vagy kisütő teljesítménye a {_i}. sávban.")
+                    f"Az akku legnagyobb töltő- vagy kisütő teljesítménye {_a} {_i}. sávban.")
     HELP[_soc] = (f"SOC limit of slot T{_i}: discharging goes down to it, charging goes up to it.",
-                  f"A {_i}. sáv töltöttségi határa: kisütésnél eddig sül ki, töltésnél eddig töltődik.")
+                  f"{_a.capitalize()} {_i}. sáv töltöttségi határa: kisütésnél eddig sül ki, töltésnél eddig töltődik.")
 
 UNLOCK_HELP = ("While off, every write from Home Assistant is refused, automations included. Turn on to change "
                "settings; it turns itself off again after 5 minutes.",
