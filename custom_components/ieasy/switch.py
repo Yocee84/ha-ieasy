@@ -1,4 +1,4 @@
-"""The write lock ("Settings unlocked") and the on/off settings: TOU, peak shaving, grid charging."""
+"""The write lock ("Settings unlocked") and the on/off settings: TOU, peak shaving, grid charging, unbalanced output."""
 from __future__ import annotations
 
 from homeassistant.components.switch import SwitchEntity
@@ -14,6 +14,7 @@ SWITCHES = (
     ("23011", "tou_enabled_set", "TOU enabled"),
     ("23007", "peak_shaving_set", "Peak shaving"),
     ("22975", "grid_charging_set", "Grid charging"),
+    ("14715", "unbalanced_output_set", "Three-phase unbalanced output"),
 )
 
 

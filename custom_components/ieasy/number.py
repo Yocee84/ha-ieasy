@@ -1,4 +1,4 @@
-"""Writable numeric settings: zero-export offset, peak-shaving limit, TOU slot power and SOC.
+"""Writable numeric settings: zero-export offset, peak-shaving limit, TOU slot power and SOC, SG Ready limits.
 
 Every write goes through the app's setting-task API and is only accepted when the inverter
 confirms the requested value. Writes are refused while "Settings unlocked" is off.
@@ -6,7 +6,7 @@ confirms the requested value. Writes are refused while "Settings unlocked" is of
 from __future__ import annotations
 
 from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
-from homeassistant.const import PERCENTAGE, UnitOfPower
+from homeassistant.const import PERCENTAGE, UnitOfPower, UnitOfTime
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN, TOU_SLOTS
@@ -22,6 +22,11 @@ NUMBERS = (
       enumerate(TOU_SLOTS, start=1)),
     *((soc, f"tou_t{i}_soc_set", f"TOU T{i} SOC limit", PERCENTAGE, 1, None) for i, (_, _, _, _, soc) in
       enumerate(TOU_SLOTS, start=1)),
+    ("23142", "sg_ready_low_soc_set", "SG Ready low SOC", PERCENTAGE, 1, None),
+    ("23143", "sg_ready_high_soc_set", "SG Ready high SOC", PERCENTAGE, 1, None),
+    ("23141", "sg_ready_cooling_time", "SG Ready smart mode cooling time", UnitOfTime.MINUTES, 1, None),
+    ("23146", "sg_ready_export_threshold", "SG Ready grid export threshold", W, 100, None),
+    ("23147", "sg_ready_import_threshold", "SG Ready grid import threshold", W, 100, None),
 )
 
 

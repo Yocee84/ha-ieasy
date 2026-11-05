@@ -6,7 +6,7 @@ Home Assistant integration for Midea / Hiconics PowerInfi hybrid inverters and b
 
 It logs in to the same cloud the app uses, polls once a minute and creates sensors for the battery, the grid (per phase), the load, the backup output and the PV strings, plus diagnostic sensors with the current inverter settings (working mode, TOU slots, battery limits, SG Ready).
 
-A few settings are **writable**: zero-export offset, peak shaving on/off and limit, grid charging on/off, TOU on/off, and the six TOU slots (function, start, end, power, SOC). A write is sent the same way the app does it and only counts as done when the inverter confirms the new value; otherwise Home Assistant shows an error.
+A few settings are **writable**: zero-export offset, peak shaving on/off and limit, grid charging on/off, TOU on/off, the six TOU slots (function, start, end, power, SOC), working mode, user scenario, grid level, three-phase unbalanced output, manual charge control (forced charge / discharge) and SG Ready (mode, SOC and grid power thresholds, six schedule slots). A write is sent the same way the app does it and only counts as done when the inverter confirms the new value; otherwise Home Assistant shows an error.
 
 Writes are protected by a **Settings unlocked** switch. It is off after every start, and turns itself off again 5 minutes after being switched on; while it is off every write is refused, including writes from automations (an automation that changes a setting turns the switch on first). Quick repeated changes of one value (stepping a number box) are debounced: only the last value is sent, 2 s after the last change.
 
@@ -80,7 +80,12 @@ The list comes from the app and from the public endpoint `https://ess-eu.hiconic
 | PV | PV power, PV1-PV3 power, voltage and current, PV today/month/year/total |
 | States (diagnostic) | inverter, PV and EPS state codes |
 | Settings (diagnostic) | working mode, user scenario, cut-off SOC, feed-in enabled/limit, grid charging enabled/limit, peak shaving enabled/limit, TOU enabled, TOU active days, TOU T1-T6 function/start/end/power/SOC, PV priority, max power, PV input limit, battery type/activation/packs, charge and discharge current limits, PCS stop/recovery SOC, low battery alarm SOC, economy mode, winter mode, battery heating, SG Ready mode and SOC limits, overload, insulation monitoring, buzzer |
-| Writable (configuration) | Settings unlocked (switch), zero-export offset, peak shaving limit, TOU T1-T6 power and SOC (number); TOU enabled, peak shaving, grid charging (switch); TOU T1-T6 function (select); TOU T1-T6 start and end (time) |
+| Settings (diagnostic, since 0.4.0) | grid level, phase sequence, fast grid/off-grid switching, unbalanced output, manual charge control, meter type, CT ratio and direction, inverter clock, AFCI enabled and alarm count, GFCI enabled, SG Ready active days |
+| Writable (configuration) | Settings unlocked (switch); zero-export offset, peak shaving limit, TOU T1-T6 power and SOC, SG Ready low/high SOC, cooling time, export and import thresholds (number); TOU enabled, peak shaving, grid charging, three-phase unbalanced output (switch); TOU T1-T6 function, working mode, user scenario, grid level, manual charge control, SG Ready mode, SG Ready T1-T6 mode (select); TOU and SG Ready T1-T6 start and end (time) |
+
+**Manual charge control** overrides the working mode and the TOU schedule: forced charge or forced discharge stays in effect until it is set back to *Adaptive*. The **grid level** and the **unbalanced output** change how the inverter connects to and regulates the grid; check the result on your meter after changing them.
+
+Deliberately not exposed: factory reset, remote on/off, grid-code protection curves, parallel-unit and fault-recording settings.
 
 The grid charging power limit stays read-only: the app sends it without asking the inverter for a confirmation, so a write could not be verified.
 

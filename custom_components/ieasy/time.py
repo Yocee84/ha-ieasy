@@ -1,11 +1,11 @@
-"""TOU slot start and end times as time entities (HH:MM)."""
+"""TOU and SG Ready slot start and end times as time entities (HH:MM)."""
 from __future__ import annotations
 
 from datetime import time
 
 from homeassistant.components.time import TimeEntity
 
-from .const import DOMAIN, TOU_SLOTS
+from .const import DOMAIN, SG_READY_SLOTS, TOU_SLOTS
 from .entity import IEasySettingEntity
 
 
@@ -15,6 +15,9 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     for i, (_, start, end, _, _) in enumerate(TOU_SLOTS, start=1):
         entities += [IEasyTouTime(coordinator, entry, start, f"tou_t{i}_start_set", f"TOU T{i} start"),
                      IEasyTouTime(coordinator, entry, end, f"tou_t{i}_end_set", f"TOU T{i} end")]
+    for i, (_, start, end) in enumerate(SG_READY_SLOTS, start=1):
+        entities += [IEasyTouTime(coordinator, entry, start, f"sg_ready_t{i}_start_set", f"SG Ready T{i} start"),
+                     IEasyTouTime(coordinator, entry, end, f"sg_ready_t{i}_end_set", f"SG Ready T{i} end")]
     async_add_entities(e for e in entities if e._code in coordinator.settings)
 
 

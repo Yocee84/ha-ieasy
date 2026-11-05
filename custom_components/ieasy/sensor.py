@@ -192,6 +192,23 @@ SETTING_SENSORS: tuple[IEasySensorDescription, ...] = (
     _setting("23140", "sg_ready_mode", "SG Ready mode (0 off, 1 smart, 2 schedule)"),
     _setting("23142", "sg_ready_low_soc", "SG Ready low SOC", PERCENTAGE),
     _setting("23143", "sg_ready_high_soc", "SG Ready high SOC", PERCENTAGE),
+    IEasySensorDescription(key="setting_sg_ready_days", name="SG Ready active days (1 Mon .. 7 Sun)",
+                           group="settings", entity_category=EntityCategory.DIAGNOSTIC,
+                           value_fn=lambda d: ",".join(sorted(str(x) for x in d.get("23166") or []))),
+    # Grid connection and meter
+    _setting("23102", "grid_level", "Grid level (0 220/380 V, 1 230/400 V)"),
+    _setting("23101", "phase_sequence", "Phase sequence (0 ABC, 1 CBA)"),
+    _setting("23104", "fast_grid_switch", "Fast grid/off-grid switching"),
+    _setting("14715", "unbalanced_output", "Three-phase unbalanced output enabled"),
+    _setting("13771", "charge_control", "Manual charge control (0 adaptive, 1 forced discharge, 2 forced charge)"),
+    _setting("11009", "meter_type", "Meter type (0 built-in CT, 1 local, 2 Acrel, 3 CHINT)"),
+    _setting("11008", "ct_ratio", "CT ratio"),
+    _setting("11007", "ct_direction", "CT direction (1 toward grid, 2 away from grid)"),
+    # Protection and clock
+    _setting("10151", "inverter_clock", "Inverter clock", numeric=False),
+    _setting("18038", "afci_enabled", "Arc fault detection (AFCI) enabled"),
+    _setting("18052", "afci_alarm_count", "Arc fault alarm count"),
+    _setting("13631", "gfci_enabled", "Leakage current protection (GFCI) enabled"),
     # Other
     _setting("22048", "overload_enabled", "Overload enabled"),
     _setting("13602", "insulation_monitoring", "Insulation monitoring enabled"),
@@ -215,8 +232,8 @@ class IEasySensor(CoordinatorEntity, SensorEntity):
         self._attr_name = localized(description.key, description.name, coordinator.language)
         self.entity_id = english_entity_id("sensor", coordinator, description.name)
         if description.group == "settings":
-            self._attr_extra_state_attributes = help_attrs(
-                "23048" if description.key == "setting_tou_days" else description.field, coordinator.language)
+            code = {"setting_tou_days": "23048", "setting_sg_ready_days": "23166"}.get(description.key, description.field)
+            self._attr_extra_state_attributes = help_attrs(code, coordinator.language)
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, sn)},
             name=coordinator.station.get("stationName") or "iEasy",

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from homeassistant.util import slugify
 
-from .const import TOU_SLOTS
+from .const import SG_READY_SLOTS, TOU_SLOTS
 
 _PHASES = {"a": "A", "b": "B", "c": "C"}
 
@@ -56,6 +56,23 @@ HU_NAMES: dict[str, str] = {
     "zero_export_offset": "Nulla-export eltolás", "peak_shaving_limit": "Csúcslevágás teljesítménykorlát",
     "tou_enabled_set": "TOU engedélyezve", "peak_shaving_set": "Csúcslevágás", "grid_charging_set": "Hálózati töltés",
     "settings_unlocked": "Beállítások feloldva",
+    "unbalanced_output_set": "Háromfázisú kiegyenlítetlen kimenet", "working_mode_set": "Üzemmód",
+    "user_scenario_set": "Felhasználói forgatókönyv", "grid_level_set": "Hálózati szint",
+    "charge_control_set": "Kézi töltésvezérlés", "sg_ready_mode_set": "SG Ready mód",
+    "sg_ready_low_soc_set": "SG Ready alsó SOC", "sg_ready_high_soc_set": "SG Ready felső SOC",
+    "sg_ready_cooling_time": "SG Ready okos mód várakozási idő",
+    "sg_ready_export_threshold": "SG Ready betáplálási küszöb", "sg_ready_import_threshold": "SG Ready vételi küszöb",
+    "setting_sg_ready_days": "SG Ready aktív napok (1 hétfő .. 7 vasárnap)",
+    "setting_grid_level": "Hálózati szint (0 220/380 V, 1 230/400 V)",
+    "setting_phase_sequence": "Fázissorrend (0 ABC, 1 CBA)",
+    "setting_fast_grid_switch": "Gyors hálózat/sziget átkapcsolás",
+    "setting_unbalanced_output": "Háromfázisú kiegyenlítetlen kimenet engedélyezve",
+    "setting_charge_control": "Kézi töltésvezérlés (0 adaptív, 1 kényszerített kisütés, 2 kényszerített töltés)",
+    "setting_meter_type": "Mérő típusa (0 beépített CT, 1 helyi, 2 Acrel, 3 CHINT)", "setting_ct_ratio": "CT áttétel",
+    "setting_ct_direction": "CT iránya (1 a hálózat felé, 2 a hálózattól el)",
+    "setting_inverter_clock": "Inverter órája", "setting_afci_enabled": "Ívhiba-védelem (AFCI) engedélyezve",
+    "setting_afci_alarm_count": "Ívhiba-riasztások száma",
+    "setting_gfci_enabled": "Szivárgóáram-védelem (GFCI) engedélyezve",
 }
 for _p, _P in _PHASES.items():
     HU_NAMES.update({
@@ -68,6 +85,9 @@ for _n in "123":
     HU_NAMES.update({f"pv{_n}_power": f"PV{_n} teljesítmény", f"pv{_n}_voltage": f"PV{_n} feszültség",
                      f"pv{_n}_current": f"PV{_n} áram"})
 for _i in range(1, 7):
+    HU_NAMES[f"sg_ready_t{_i}_mode_set"] = f"SG Ready {_i}. sáv mód"
+    HU_NAMES[f"sg_ready_t{_i}_start_set"] = f"SG Ready {_i}. sáv kezdete"
+    HU_NAMES[f"sg_ready_t{_i}_end_set"] = f"SG Ready {_i}. sáv vége"
     for _suffix, _word in (("function", "mód"), ("start", "kezdete"), ("end", "vége"),
                            ("power", "teljesítménykorlát"), ("soc", "SOC-határ")):
         HU_NAMES[f"tou_t{_i}_{_suffix}_set"] = f"TOU {_i}. sáv {_word}"
@@ -130,6 +150,47 @@ HELP: dict[str, tuple[str, str]] = {
     "22048": ("Whether short overload operation is allowed.", "Engedélyezett-e a rövid túlterheléses működés."),
     "13602": ("Insulation resistance monitoring of the PV side.", "A napelem oldal szigetelési ellenállásának figyelése."),
     "22011": ("Buzzer of the inverter.", "A gép hangjelzése."),
+    "14715": ("Three-phase unbalanced output: when on, the inverter regulates each phase on its own instead of "
+              "the sum of the three, to avoid exporting on one phase while another phase imports. "
+              "Needs zero export mode and a correctly wired meter (CT phases matching the grid phases).",
+              "Háromfázisú kiegyenlítetlen kimenet: bekapcsolva a gép fázisonként szabályoz, nem a három fázis "
+              "összegére, hogy ne tápláljon vissza az egyik fázison, miközben a másikon vételez. Nulla-export mód és helyesen bekötött mérő kell hozzá (a CT-fázisok egyezzenek a "
+              "hálózati fázisokkal)."),
+    "23102": ("Nominal grid voltage the inverter is set up for: 220/380 V or 230/400 V (Europe: 230/400 V).",
+              "A hálózat névleges feszültsége, amire a gép be van állítva: 220/380 V vagy 230/400 V "
+              "(Európában 230/400 V)."),
+    "23101": ("Phase rotation of the grid as configured: ABC or CBA. It does not fix a CT that is on the wrong "
+              "phase; that has to be rewired.",
+              "A hálózat fázissorrendje a beállítás szerint: ABC vagy CBA. Rossz fázisra tett CT-t nem javít, "
+              "azt át kell kötni."),
+    "23104": ("Seamless switching between grid and off-grid (backup) operation.",
+              "Megszakítás nélküli átkapcsolás hálózati és szigetüzem (backup) között."),
+    "13771": ("Manual charge control: adaptive is normal operation. Forced charge or forced discharge overrides the "
+              "working mode and TOU until it is set back to adaptive.",
+              "Kézi töltésvezérlés: az adaptív a normál működés. A kényszerített töltés vagy kisütés felülírja az "
+              "üzemmódot és a TOU-t, amíg vissza nem állítod adaptívra."),
+    "11009": ("Grid meter the inverter reads (built-in CT, Acrel, CHINT).",
+              "A hálózati mérő, amit a gép olvas (beépített CT, Acrel, CHINT)."),
+    "11008": ("Current transformer ratio of the grid meter.", "A hálózati mérő áramváltójának áttétele."),
+    "11007": ("Direction the current transformers face.", "Az áramváltók iránya."),
+    "10151": ("Date and time of the inverter's own clock. The TOU slots run on this clock, so check it against the "
+              "real time.",
+              "A gép saját órájának dátuma és ideje. A TOU-sávok ezen az órán futnak, ezért érdemes a valós "
+              "idővel összevetni."),
+    "18038": ("Arc fault circuit interrupter on the PV side.", "Ívhiba-megszakító a napelem oldalon."),
+    "18052": ("Number of arc fault alarms the inverter has counted.", "A gép által számolt ívhiba-riasztások száma."),
+    "13631": ("Leakage current (residual current) protection.", "Szivárgóáram-védelem."),
+    "23140": ("SG Ready signal (heat pump control): off, smart (SOC and grid power based) or schedule.",
+              "SG Ready jel (hőszivattyú-vezérlés): ki, okos (töltöttség és hálózati teljesítmény alapján) vagy "
+              "ütemezett."),
+    "23141": ("SG Ready smart mode: minimum time between two mode changes.",
+              "SG Ready okos mód: két módváltás közötti legrövidebb idő."),
+    "23146": ("SG Ready smart mode: grid export above this power switches the heat pump to encouraged use.",
+              "SG Ready okos mód: e feletti betáplálásnál a hőszivattyú ösztönzött üzemre vált."),
+    "23147": ("SG Ready smart mode: grid import above this power switches the heat pump back.",
+              "SG Ready okos mód: e feletti hálózati vételnél a hőszivattyú visszavált."),
+    "23166": ("Days of the week the SG Ready schedule is active on (1 Monday .. 7 Sunday).",
+              "A hét azon napjai, amikor az SG Ready ütemezés aktív (1 hétfő .. 7 vasárnap)."),
 }
 for _i, (_fun, _start, _end, _power, _soc) in enumerate(TOU_SLOTS, start=1):
     _a = "az" if _i in (1, 5) else "a"  # Hungarian article: "az 1.", "az 5.", "a 2."
@@ -144,13 +205,34 @@ for _i, (_fun, _start, _end, _power, _soc) in enumerate(TOU_SLOTS, start=1):
     HELP[_soc] = (f"SOC limit of slot T{_i}: discharging goes down to it, charging goes up to it.",
                   f"{_a.capitalize()} {_i}. sáv töltöttségi határa: kisütésnél eddig sül ki, töltésnél eddig töltődik.")
 
+for _i, (_mode, _start, _end) in enumerate(SG_READY_SLOTS, start=1):
+    _a = "az" if _i in (1, 5) else "a"
+    HELP[_mode] = (f"SG Ready schedule slot T{_i}: economy or encouraged use of the heat pump.",
+                   f"SG Ready ütemezés {_a} {_i}. sávban: gazdaságos vagy ösztönzött hőszivattyú-használat.")
+    HELP[_start] = (f"Start of SG Ready slot T{_i} (HH:MM).", f"{_a.capitalize()} {_i}. SG Ready sáv kezdete (ÓÓ:PP).")
+    HELP[_end] = (f"End of SG Ready slot T{_i} (HH:MM).", f"{_a.capitalize()} {_i}. SG Ready sáv vége (ÓÓ:PP).")
+
 UNLOCK_HELP = ("While off, every write from Home Assistant is refused, automations included. Turn on to change "
                "settings; it turns itself off again after 5 minutes.",
                "Kikapcsolva minden írást elutasít, az automatizmusokét is. Bekapcsolva lehet beállítást "
                "módosítani; 5 perc után magától kikapcsol.")
 
-SELECT_LABELS = {"en": {"0": "Idle", "1": "Charge", "2": "Discharge"},
-                 "hu": {"0": "Üresjárat", "1": "Töltés", "2": "Kisütés"}}
+# Option labels of the select entities, keyed by option code as the inverter uses it.
+OPTION_LABELS = {
+    "tou_function": {"en": {"0": "Idle", "1": "Charge", "2": "Discharge"},
+                     "hu": {"0": "Üresjárat", "1": "Töltés", "2": "Kisütés"}},
+    "working_mode": {"en": {"0": "Maximum self-consumption", "1": "Sell first", "2": "Battery backup", "3": "Custom"},
+                     "hu": {"0": "Maximális önfogyasztás", "1": "Eladás előbb", "2": "Akku tartalék", "3": "Egyéni"}},
+    "user_scenario": {"en": {"5": "Feed-in priority", "7": "Zero export"},
+                      "hu": {"5": "Betáplálási elsőbbség", "7": "Nulla export"}},
+    "grid_level": {"en": {"0": "220/380 V", "1": "230/400 V"}, "hu": {"0": "220/380 V", "1": "230/400 V"}},
+    "charge_control": {"en": {"0": "Adaptive", "1": "Forced discharge", "2": "Forced charge"},
+                       "hu": {"0": "Adaptív", "1": "Kényszerített kisütés", "2": "Kényszerített töltés"}},
+    "sg_ready_mode": {"en": {"0": "Off", "1": "Smart", "2": "Schedule"},
+                      "hu": {"0": "Ki", "1": "Okos", "2": "Ütemezett"}},
+    "sg_ready_slot_mode": {"en": {"0": "Economy", "1": "Encouraged use"},
+                           "hu": {"0": "Gazdaságos", "1": "Ösztönzött használat"}},
+}
 
 
 def name(key: str, english: str, language: str) -> str:
